@@ -1,0 +1,158 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from zhipuai import ZhipuAI
+import os
+import sys
+import distro
+import os
+import math
+
+
+class ChatGLM:
+    def __init__(self, api_key=None, model=None):
+        """
+        Initialize ChatGLM class
+
+        :param api_key: API key for ChatGLM
+        :param model: Model for ChatGLM
+
+        """
+        if not api_key:
+            api_key = os.environ.get("ZHIPUAI_API_KEY")
+        self.api_key = api_key
+        if not model:
+            model = "glm-3-turbo"
+        self.model = model
+        self.client = ZhipuAI(api_key=api_key)
+    
+    def chat(self, reply_language=None, model=None, chat_history=None):
+        """
+        Start chat with ChatGLM
+
+        :param reply_language: Language for reply (default is system language)
+        :param model: Model for ChatGLM, if not set, use the model set in the constructor.
+        :param chat_history: Show chat history or not (default is No history)
+        :return: messages: Chat History.
+        """
+
+        # Initialize model
+        if not model:
+            model = self.model
+        
+        # Initialize reply language
+        if not reply_language:
+            # get system language
+            reply_language = os.environ.get("LANG")
+        question = input("\033[32m[User]: \033[0m")
+        system_prompt = f"""You are a helpful Linux smart assistant in the terminal.
+        You can solve Linux related questions.
+        Please be as concise as possible with your answer to save the Token consumed by this call.
+        The Linux distribution is {distro.name()}.
+        My name is {os.getlogin}, please call me {os.getlogin()}.
+        Please reply me in {reply_language}.
+        """
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt
+            }, {
+                "role": "user",
+                "content": question + f"Please reply me in {reply_language}."
+            }
+        ]
+        if chat_history:
+            messages = chat_history
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            stream=True,
+        )
+        reply = ""
+        print("\033[32m[ChatGLM]: \033[0m", end="")
+        for chunk in response:
+            print(chunk.choices[0].delta.content, end="")
+            reply += chunk.choices[0].delta.content
+        print("\n\n")
+        messages.append({"role": "assistant", "content": reply})
+        while True:
+            question = input("\033[32m[User]: \033[0m")
+            if question.lower() == "exit":
+                break
+            messages.append({"role": "user", "content": question})
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                stream=True,
+            )
+            reply = ""
+            print("\033[32m[ChatGLM]: \033[0m", end="")
+            for chunk in response:
+                reply += chunk.choices[0].delta.content
+                print(chunk.choices[0].delta.content, end="")
+            print("\n\n")
+            messages.append({"role": "assistant", "content": reply})
+        return messages
+            
+    def reply(self, question, model=None, reply_language=None):
+        """
+        Reply a question with ChatGLM
+
+        :param question: Question for reply
+        :param model: Model for ChatGLM, if not set, use the model set in the constructor.
+        :param reply_language: Language for reply (default is system language)
+        :return: reply: ChatGLM reply.
+        """
+        if not model:
+            model = self.model
+        if not reply_language:
+            reply_language = os.environ.get("LANG")
+        system_prompt = f"""You are a helpful Linux smart assistant in the terminal.
+        You can solve Linux related questions.
+        Please be as concise as possible with your answer to save the Token consumed by this call.
+        The Linux distribution is {distro.name()}.
+        My name is {os.getlogin}, please call me {os.getlogin()}.
+        Please reply me in {reply_language}.
+        """
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": question + f"Please reply me in {reply_language}."
+            }
+        ]
+
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            stream=True,
+        )
+        reply = ""
+        for chunk in response:
+            print(chunk.choices[0].delta.content, end="")
+            reply += chunk.choices[0].delta.content
+        print("\n")
+        return reply
+
+
+def exec_chatglm(params):
+    chatglm = ChatGLM()
+    if len(params) == 2:
+        if params[-1] in ["chat", "-c", "--chat"]:
+            chatglm.chat()
+        else:
+            chatglm.reply(question=params[-1])
+    else:
+        raise ValueError("Invalid argument.")
+
+
+def main():
+    params = sys.argv
+    exec_chatglm(params)
+    
+
+if __name__ == "__main__":
+    main()
