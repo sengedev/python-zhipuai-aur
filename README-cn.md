@@ -4,6 +4,8 @@
 
 为ArchLinux用户打包的python-zhipuai 软件包
 
+AUR 仓库: https://aur.archlinux.org/packages/python-zhipuai
+
 ## 如何安装
 
 用户可以使用以下命令安装这个软件包，这个命令会同时安装pypi包及其依赖。
