@@ -4,6 +4,8 @@
 
 python-zhipuai package for ArchLinux user.
 
+AUR Repo: https://aur.archlinux.org/packages/python-zhipuai
+
 ## How to install
 
 Users can install this packages using AUR, it will install the pypi package and depends.
