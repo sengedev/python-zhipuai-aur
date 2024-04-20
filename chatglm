@@ -35,51 +35,42 @@ class ChatGLM:
         :param chat_history: Show chat history or not (default is No history)
         :return: messages: Chat History.
         """
-
-        # Initialize model
+        # Initialize model if user don't want to change it.
         if not model:
             model = self.model
-        
-        # Initialize reply language
+        # Initialize reply language as system language if user don't want to change it.
         if not reply_language:
-            # get system language
             reply_language = os.environ.get("LANG")
-        question = input("\033[32m[User]: \033[0m")
+        # Initialize the system prompt, and then append it to the messages list.
         system_prompt = f"""You are a helpful Linux smart assistant in the terminal.
         You can solve Linux related questions.
         Please be as concise as possible with your answer to save the Token consumed by this call.
         The Linux distribution is {distro.name()}.
-        My name is {os.getlogin}, please call me {os.getlogin()}.
+        My name is {os.getlogin()}, please call me {os.getlogin()}.
         Please reply me in {reply_language}.
         """
+        # Initialize the messages list, and then append the system prompt to it.
         messages = [
             {
                 "role": "system",
                 "content": system_prompt
-            }, {
-                "role": "user",
-                "content": question + f"Please reply me in {reply_language}."
             }
         ]
+        # If user want to show chat history, append it to the message list and send it to ChatGLM for reply.
         if chat_history:
             messages = chat_history
-        response = self.client.chat.completions.create(
-            model=model,
-            messages=messages,
-            stream=True,
-        )
-        reply = ""
-        print("\033[32m[ChatGLM]: \033[0m", end="")
-        for chunk in response:
-            print(chunk.choices[0].delta.content, end="")
-            reply += chunk.choices[0].delta.content
-        print("\n\n")
-        messages.append({"role": "assistant", "content": reply})
+        # After the messages list is initialized, start the chat loop.
         while True:
+            # Get user input, and append it to the messages list, and then send the messages list to ChatGLM for reply.
             question = input("\033[32m[User]: \033[0m")
+            # Check if the user input is "exit", if so, break the loop.
             if question.lower() == "exit":
                 break
-            messages.append({"role": "user", "content": question})
+            # Append the user input to the messages list.
+            messages.append({"role": "user",
+                "content": question + f"Please reply me in {reply_language} and note the reading of the system prompt."
+            })
+            # Send the messages list to ChatGLM for reply.
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -87,11 +78,15 @@ class ChatGLM:
             )
             reply = ""
             print("\033[32m[ChatGLM]: \033[0m", end="")
+            # Get the reply from ChatGLM.
             for chunk in response:
+                # Print the reply chunk by chunk and append it to the reply string.
                 reply += chunk.choices[0].delta.content
                 print(chunk.choices[0].delta.content, end="")
             print("\n\n")
+            # Append the reply to the messages list, and send the messages list to ChatGLM for reply.
             messages.append({"role": "assistant", "content": reply})
+        # Return the messages list, user can save it and use it for next chat.
         return messages
             
     def reply(self, question, model=None, reply_language=None):
@@ -103,17 +98,21 @@ class ChatGLM:
         :param reply_language: Language for reply (default is system language)
         :return: reply: ChatGLM reply.
         """
+        # Initialize model if user don't want to change it.
         if not model:
             model = self.model
+        # Initialize reply language as system language if user don't want to change it.
         if not reply_language:
             reply_language = os.environ.get("LANG")
+        # Initialize the system prompt, and then append it to the messages list.
         system_prompt = f"""You are a helpful Linux smart assistant in the terminal.
         You can solve Linux related questions.
         Please be as concise as possible with your answer to save the Token consumed by this call.
         The Linux distribution is {distro.name()}.
-        My name is {os.getlogin}, please call me {os.getlogin()}.
+        My name is {os.getlogin()}, please call me {os.getlogin()}.
         Please reply me in {reply_language}.
         """
+        # Initialize user's question, and then append it to the messages list.
         messages = [
             {
                 "role": "system",
@@ -121,38 +120,46 @@ class ChatGLM:
             },
             {
                 "role": "user",
-                "content": question + f"Please reply me in {reply_language}."
+                "content": question + f"Please reply me in {reply_language} and note the reading of the system prompt."
             }
         ]
-
+        # Send the messages list to ChatGLM for reply.
         response = self.client.chat.completions.create(
             model=model,
             messages=messages,
             stream=True,
         )
         reply = ""
+        # Print the reply chunk by chunk and append it to the reply string.
         for chunk in response:
             print(chunk.choices[0].delta.content, end="")
             reply += chunk.choices[0].delta.content
         print("\n")
+        # Return the reply string.
         return reply
 
 
 def exec_chatglm(params):
+
+    # Check if the environment is a TTY.
+    tty_name = os.ttyname(0)
+    is_tty = tty_name.startswith("/dev/tty")
     chatglm = ChatGLM()
+    # Be sure to prevents display exceptions in Chinese, Japanese, Korean and other languages.
+    language = "en_US" if is_tty else os.environ.get("LANG")
     if len(params) == 2:
+        # If user want to start chat mode, user can use chat, -c, or --chat as the parameter.
         if params[-1] in ["chat", "-c", "--chat"]:
-            chatglm.chat()
+            chatglm.chat(reply_language=language)
+        # User can also use the question as a parameter to ask a question.
         else:
-            chatglm.reply(question=params[-1])
+            chatglm.reply(question=params[-1], reply_language=language)
     else:
         raise ValueError("Invalid argument.")
 
 
-def main():
-    params = sys.argv
-    exec_chatglm(params)
-    
-
 if __name__ == "__main__":
-    main()
+    # Get the command line arguments.
+    params = sys.argv
+    # Execute the chatglm function.
+    exec_chatglm(params)
