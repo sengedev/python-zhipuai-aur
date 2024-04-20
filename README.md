@@ -1,6 +1,6 @@
 # Python ZhipuAI AUR
 
-[English](README.md) | [中文](README.md)
+[English](README.md) | [中文](README-cn.md)
 
 python-zhipuai package for ArchLinux user.
 
